@@ -1,0 +1,9 @@
+# Core tabular data handling
+pandas>=3.0,<3.1
+
+# PyTorch stack
+# Note: CUDA-enabled torch should be installed using the command documented in prerequisites.md
+# This file documents the Python package dependency set for the project.
+torch>=2.11,<2.12
+torchvision>=0.26,<0.27
+torchaudio>=2.11,<2.12

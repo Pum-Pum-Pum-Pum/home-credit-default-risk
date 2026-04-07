@@ -1,0 +1,51 @@
+# Python cache / bytecode
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# Virtual environments
+.venv/
+.venv311/
+venv/
+env/
+
+# Packaging / build
+build/
+dist/
+*.egg-info/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# IDE / editor
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+artifacts/logs/
+
+#Data files
+data/
+
+# Model artifacts / experiment outputs
+artifacts/checkpoints/
+artifacts/metrics/
+
+# Local environment files
+.env
+.env.*
+
+# Temporary files
+*.tmp
+*.bak
+*.clinerules
+
+prerequisites.md
+home-credit-default-risk.zip
+*.zip
