@@ -11,6 +11,8 @@ if str(PROJECT_ROOT) not in sys.path:
 
 from configs.base_config import ProjectConfig
 from src.data.eda import run_step1_eda
+from src.data.preprocessing import build_tabular_metadata, summarize_tabular_metadata
+from src.data.splits import make_train_valid_split
 from src.utils.device import get_torch_device_summary
 
 
@@ -21,6 +23,28 @@ def main() -> None:
         target_col=config.target_col,
         id_cols=config.id_cols,
     )
+
+    from src.data.eda import load_main_table
+
+    df = load_main_table(config.data_path)
+    split_data = make_train_valid_split(
+        df=df,
+        target_col=config.target_col,
+        valid_size=config.valid_size,
+        random_state=config.random_state,
+    )
+    metadata = build_tabular_metadata(
+        train_df=split_data.train_df,
+        target_col=config.target_col,
+        id_cols=config.id_cols,
+    )
+
+    print("\nStep 2 preview - split summary:")
+    print(f"train shape: {split_data.train_df.shape}")
+    print(f"valid shape: {split_data.valid_df.shape}")
+
+    print("\nStep 2 preview - tabular metadata:")
+    print(summarize_tabular_metadata(metadata))
 
     print("\nTorch device summary:")
     print(get_torch_device_summary())

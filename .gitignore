@@ -31,7 +31,7 @@ Thumbs.db
 artifacts/logs/
 
 #Data files
-data/
+data_from_kaggle/
 
 # Model artifacts / experiment outputs
 artifacts/checkpoints/
@@ -47,5 +47,3 @@ artifacts/metrics/
 *.clinerules
 
 prerequisites.md
-home-credit-default-risk.zip
-*.zip
