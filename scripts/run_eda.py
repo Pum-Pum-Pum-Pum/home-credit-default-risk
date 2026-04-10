@@ -10,6 +10,7 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from configs.base_config import ProjectConfig
+from src.data.dataset import HomeCreditDataset, inspect_dataset_sample
 from src.data.eda import run_step1_eda
 from src.data.preprocessing import build_tabular_metadata, summarize_tabular_metadata
 from src.data.splits import make_train_valid_split
@@ -45,6 +46,16 @@ def main() -> None:
 
     print("\nStep 2 preview - tabular metadata:")
     print(summarize_tabular_metadata(metadata))
+
+    train_dataset = HomeCreditDataset(split_data.train_df, metadata)
+    valid_dataset = HomeCreditDataset(split_data.valid_df, metadata)
+
+    print("\nStep 3 preview - dataset lengths:")
+    print(f"train dataset length: {len(train_dataset)}")
+    print(f"valid dataset length: {len(valid_dataset)}")
+
+    print("\nStep 3 preview - first sample tensor summary:")
+    print(inspect_dataset_sample(train_dataset, idx=0))
 
     print("\nTorch device summary:")
     print(get_torch_device_summary())
