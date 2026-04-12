@@ -10,6 +10,7 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from configs.base_config import ProjectConfig
+from src.data.dataloaders import DataLoaderConfig, create_dataloaders, inspect_batch
 from src.data.dataset import HomeCreditDataset, inspect_dataset_sample
 from src.data.eda import run_step1_eda
 from src.data.preprocessing import build_tabular_metadata, summarize_tabular_metadata
@@ -50,12 +51,30 @@ def main() -> None:
     train_dataset = HomeCreditDataset(split_data.train_df, metadata)
     valid_dataset = HomeCreditDataset(split_data.valid_df, metadata)
 
+    loader_config = DataLoaderConfig(
+        batch_size=config.batch_size,
+        num_workers=config.num_workers,
+        pin_memory=config.pin_memory,
+    )
+    train_loader, valid_loader = create_dataloaders(
+        train_dataset=train_dataset,
+        valid_dataset=valid_dataset,
+        config=loader_config,
+    )
+
     print("\nStep 3 preview - dataset lengths:")
     print(f"train dataset length: {len(train_dataset)}")
     print(f"valid dataset length: {len(valid_dataset)}")
 
     print("\nStep 3 preview - first sample tensor summary:")
     print(inspect_dataset_sample(train_dataset, idx=0))
+
+    first_train_batch = next(iter(train_loader))
+    first_valid_batch = next(iter(valid_loader))
+
+    print("\nStep 4 preview - DataLoader batch summary:")
+    print("train batch:", inspect_batch(first_train_batch))
+    print("valid batch:", inspect_batch(first_valid_batch))
 
     print("\nTorch device summary:")
     print(get_torch_device_summary())

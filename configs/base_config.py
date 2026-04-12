@@ -12,6 +12,9 @@ class ProjectConfig:
 
     random_state: int = 42
     valid_size: float = 0.2
+    batch_size: int = 512
+    num_workers: int = 0
+    pin_memory: bool = True
 
     artifacts_dir: str = "artifacts"
     checkpoints_dir: str = "artifacts/checkpoints"
