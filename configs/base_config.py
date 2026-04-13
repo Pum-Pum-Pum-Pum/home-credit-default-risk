@@ -15,6 +15,10 @@ class ProjectConfig:
     batch_size: int = 512
     num_workers: int = 0
     pin_memory: bool = True
+    embedding_dropout: float = 0.1
+    mlp_hidden_dims: tuple[int, ...] = (256, 128)
+    mlp_dropout: float = 0.2
+    use_batch_norm: bool = True
 
     artifacts_dir: str = "artifacts"
     checkpoints_dir: str = "artifacts/checkpoints"

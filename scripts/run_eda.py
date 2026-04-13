@@ -15,6 +15,7 @@ from src.data.dataset import HomeCreditDataset, inspect_dataset_sample
 from src.data.eda import run_step1_eda
 from src.data.preprocessing import build_tabular_metadata, summarize_tabular_metadata
 from src.data.splits import make_train_valid_split
+from src.models.tabular_mlp import TabularMLP, TabularMLPConfig, inspect_model_forward_pass
 from src.utils.device import get_torch_device_summary
 
 
@@ -75,6 +76,25 @@ def main() -> None:
     print("\nStep 4 preview - DataLoader batch summary:")
     print("train batch:", inspect_batch(first_train_batch))
     print("valid batch:", inspect_batch(first_valid_batch))
+
+    cat_cardinalities = [
+        len(metadata.category_maps[col]) + 1
+        for col in metadata.categorical_cols
+    ]
+    model_config = TabularMLPConfig(
+        embedding_dropout=config.embedding_dropout,
+        mlp_hidden_dims=config.mlp_hidden_dims,
+        mlp_dropout=config.mlp_dropout,
+        use_batch_norm=config.use_batch_norm,
+    )
+    model = TabularMLP(
+        cat_cardinalities=cat_cardinalities,
+        num_numeric_features=len(metadata.numerical_cols),
+        config=model_config,
+    )
+
+    print("\nStep 5 preview - model forward-pass summary:")
+    print(inspect_model_forward_pass(model, first_train_batch))
 
     print("\nTorch device summary:")
     print(get_torch_device_summary())
