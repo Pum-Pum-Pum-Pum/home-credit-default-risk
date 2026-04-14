@@ -16,6 +16,7 @@ from src.data.eda import run_step1_eda
 from src.data.preprocessing import build_tabular_metadata, summarize_tabular_metadata
 from src.data.splits import make_train_valid_split
 from src.models.tabular_mlp import TabularMLP, TabularMLPConfig, inspect_model_forward_pass
+from src.training.metrics import compute_binary_classification_metrics, summarize_metrics
 from src.training.trainer import (
     TrainingConfig,
     build_loss_fn,
@@ -134,7 +135,7 @@ def main() -> None:
         optimizer=optimizer,
         loss_fn=loss_fn,
         device=device,
-        max_batches=5,
+        max_batches=10,
     )
     valid_epoch_output = run_validation_epoch(
         model=model,
@@ -153,6 +154,14 @@ def main() -> None:
         "probs_shape": valid_epoch_output.probs.shape,
         "targets_shape": valid_epoch_output.targets.shape,
     })
+
+    metrics = compute_binary_classification_metrics(
+        targets=valid_epoch_output.targets,
+        probs=valid_epoch_output.probs,
+        threshold=0.5,
+    )
+    print("\nStep 8 preview - validation metrics:")
+    print(summarize_metrics(metrics))
 
     print("\nTorch device summary:")
     print(get_torch_device_summary())

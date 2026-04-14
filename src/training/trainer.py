@@ -139,7 +139,7 @@ def run_train_epoch_preview(
     optimizer: Optimizer,
     loss_fn: nn.Module,
     device: torch.device,
-    max_batches: int = 5,
+    max_batches: int = 10,
 ) -> dict[str, float]:
     """Run a short train-epoch preview over a limited number of batches."""
     losses: list[float] = []
