@@ -19,6 +19,8 @@ class ProjectConfig:
     mlp_hidden_dims: tuple[int, ...] = (256, 128)
     mlp_dropout: float = 0.2
     use_batch_norm: bool = True
+    learning_rate: float = 1e-3
+    weight_decay: float = 1e-4
 
     artifacts_dir: str = "artifacts"
     checkpoints_dir: str = "artifacts/checkpoints"

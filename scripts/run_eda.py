@@ -16,6 +16,16 @@ from src.data.eda import run_step1_eda
 from src.data.preprocessing import build_tabular_metadata, summarize_tabular_metadata
 from src.data.splits import make_train_valid_split
 from src.models.tabular_mlp import TabularMLP, TabularMLPConfig, inspect_model_forward_pass
+from src.training.trainer import (
+    TrainingConfig,
+    build_loss_fn,
+    build_optimizer,
+    get_device,
+    inspect_training_step_devices,
+    run_train_epoch_preview,
+    run_validation_epoch,
+    train_step,
+)
 from src.utils.device import get_torch_device_summary
 
 
@@ -95,6 +105,54 @@ def main() -> None:
 
     print("\nStep 5 preview - model forward-pass summary:")
     print(inspect_model_forward_pass(model, first_train_batch))
+
+    training_config = TrainingConfig(
+        learning_rate=config.learning_rate,
+        weight_decay=config.weight_decay,
+    )
+    device = get_device()
+    model = model.to(device)
+    optimizer = build_optimizer(model, training_config)
+    loss_fn = build_loss_fn()
+
+    print("\nStep 6 preview - device placement summary:")
+    print(inspect_training_step_devices(model, first_train_batch, device))
+
+    train_metrics = train_step(
+        model=model,
+        batch=first_train_batch,
+        optimizer=optimizer,
+        loss_fn=loss_fn,
+        device=device,
+    )
+    print("\nStep 6 preview - one training step metrics:")
+    print(train_metrics)
+
+    train_epoch_preview = run_train_epoch_preview(
+        model=model,
+        train_loader=train_loader,
+        optimizer=optimizer,
+        loss_fn=loss_fn,
+        device=device,
+        max_batches=5,
+    )
+    valid_epoch_output = run_validation_epoch(
+        model=model,
+        valid_loader=valid_loader,
+        loss_fn=loss_fn,
+        device=device,
+    )
+
+    print("\nStep 7 preview - train epoch preview metrics:")
+    print(train_epoch_preview)
+
+    print("\nStep 7 preview - validation epoch summary:")
+    print({
+        "valid_loss": valid_epoch_output.loss,
+        "logits_shape": valid_epoch_output.logits.shape,
+        "probs_shape": valid_epoch_output.probs.shape,
+        "targets_shape": valid_epoch_output.targets.shape,
+    })
 
     print("\nTorch device summary:")
     print(get_torch_device_summary())
