@@ -16,11 +16,17 @@ from src.data.eda import run_step1_eda
 from src.data.preprocessing import build_tabular_metadata, summarize_tabular_metadata
 from src.data.splits import make_train_valid_split
 from src.models.tabular_mlp import TabularMLP, TabularMLPConfig, inspect_model_forward_pass
-from src.training.metrics import compute_binary_classification_metrics, summarize_metrics
+from src.training.metrics import (
+    compute_binary_classification_metrics,
+    summarize_metrics,
+    threshold_sweep,
+)
 from src.training.trainer import (
     TrainingConfig,
+    build_weighted_loss_fn,
     build_loss_fn,
     build_optimizer,
+    compute_pos_weight,
     get_device,
     inspect_training_step_devices,
     run_train_epoch_preview,
@@ -116,6 +122,10 @@ def main() -> None:
     optimizer = build_optimizer(model, training_config)
     loss_fn = build_loss_fn()
 
+    train_targets_np = split_data.train_df[config.target_col].to_numpy(dtype="float32").reshape(-1, 1)
+    pos_weight = compute_pos_weight(train_targets_np)
+    weighted_loss_fn = build_weighted_loss_fn(pos_weight.to(device))
+
     print("\nStep 6 preview - device placement summary:")
     print(inspect_training_step_devices(model, first_train_batch, device))
 
@@ -162,6 +172,29 @@ def main() -> None:
     )
     print("\nStep 8 preview - validation metrics:")
     print(summarize_metrics(metrics))
+
+    threshold_results = threshold_sweep(
+        targets=valid_epoch_output.targets,
+        probs=valid_epoch_output.probs,
+        thresholds=[0.1, 0.2, 0.3, 0.4, 0.5],
+    )
+    print("\nStep 9 preview - threshold sweep summary:")
+    for result in threshold_results:
+        print(result)
+
+    weighted_train_metrics = train_step(
+        model=model,
+        batch=first_train_batch,
+        optimizer=optimizer,
+        loss_fn=weighted_loss_fn,
+        device=device,
+    )
+    print("\nStep 10 preview - imbalance handling summary:")
+    print({
+        "pos_weight": float(pos_weight.item()),
+        "weighted_train_step_loss": weighted_train_metrics["loss"],
+        "weighted_train_step_mean_pred_prob": weighted_train_metrics["mean_pred_prob"],
+    })
 
     print("\nTorch device summary:")
     print(get_torch_device_summary())

@@ -14,6 +14,7 @@ from torch.optim import AdamW, Optimizer
 class TrainingConfig:
     learning_rate: float = 1e-3
     weight_decay: float = 1e-4
+    use_pos_weight: bool = True
 
 
 @dataclass
@@ -37,6 +38,28 @@ def build_optimizer(model: nn.Module, config: TrainingConfig) -> Optimizer:
 def build_loss_fn() -> nn.Module:
     """Binary classification loss on raw logits."""
     return nn.BCEWithLogitsLoss()
+
+
+def compute_pos_weight(targets: np.ndarray) -> torch.Tensor:
+    """Compute positive-class weighting for imbalanced binary classification.
+
+    Formula:
+        pos_weight = n_negative / n_positive
+    """
+    targets_1d = targets.reshape(-1)
+    n_positive = float(targets_1d.sum())
+    n_total = float(len(targets_1d))
+    n_negative = n_total - n_positive
+
+    if n_positive == 0:
+        raise ValueError("Cannot compute pos_weight when there are no positive samples.")
+
+    return torch.tensor(n_negative / n_positive, dtype=torch.float32)
+
+
+def build_weighted_loss_fn(pos_weight: torch.Tensor) -> nn.Module:
+    """Binary cross-entropy with positive-class weighting."""
+    return nn.BCEWithLogitsLoss(pos_weight=pos_weight)
 
 
 def move_batch_to_device(

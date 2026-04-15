@@ -66,3 +66,22 @@ def summarize_metrics(metrics: BinaryClassificationMetrics) -> dict[str, object]
         "positive_rate_pred": metrics.positive_rate_pred,
         "confusion_matrix": metrics.confusion_matrix.tolist(),
     }
+
+
+def threshold_sweep(
+    targets: np.ndarray,
+    probs: np.ndarray,
+    thresholds: list[float],
+) -> list[dict[str, object]]:
+    """Evaluate metrics across multiple decision thresholds."""
+    results: list[dict[str, object]] = []
+
+    for threshold in thresholds:
+        metrics = compute_binary_classification_metrics(
+            targets=targets,
+            probs=probs,
+            threshold=threshold,
+        )
+        results.append(summarize_metrics(metrics))
+
+    return results
