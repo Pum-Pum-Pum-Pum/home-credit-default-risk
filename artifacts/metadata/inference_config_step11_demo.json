@@ -1,0 +1,8 @@
+{
+  "threshold": 0.4,
+  "target_col": "TARGET",
+  "id_cols": [
+    "SK_ID_CURR"
+  ],
+  "batch_size": 512
+}

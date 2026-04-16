@@ -33,6 +33,7 @@ from src.training.trainer import (
     run_validation_epoch,
     train_step,
 )
+from src.utils.checkpointing import save_json_artifact, save_model_checkpoint
 from src.utils.device import get_torch_device_summary
 
 
@@ -194,6 +195,37 @@ def main() -> None:
         "pos_weight": float(pos_weight.item()),
         "weighted_train_step_loss": weighted_train_metrics["loss"],
         "weighted_train_step_mean_pred_prob": weighted_train_metrics["mean_pred_prob"],
+    })
+
+    checkpoint_path = save_model_checkpoint(
+        model=model,
+        path="artifacts/checkpoints/tabular_mlp_step11_demo.pt",
+    )
+    metadata_path = save_json_artifact(
+        obj={
+            "feature_cols": metadata.feature_cols,
+            "categorical_cols": metadata.categorical_cols,
+            "numerical_cols": metadata.numerical_cols,
+            "numeric_fill_values": metadata.numeric_fill_values,
+            "category_maps": metadata.category_maps,
+        },
+        path="artifacts/metadata/preprocessing_step11_demo.json",
+    )
+    inference_config_path = save_json_artifact(
+        obj={
+            "threshold": 0.4,
+            "target_col": config.target_col,
+            "id_cols": config.id_cols,
+            "batch_size": config.batch_size,
+        },
+        path="artifacts/metadata/inference_config_step11_demo.json",
+    )
+
+    print("\nStep 11 preview - saved artifacts:")
+    print({
+        "checkpoint_path": checkpoint_path,
+        "metadata_path": metadata_path,
+        "inference_config_path": inference_config_path,
     })
 
     print("\nTorch device summary:")
