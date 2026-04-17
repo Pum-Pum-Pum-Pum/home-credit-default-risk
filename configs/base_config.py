@@ -21,6 +21,7 @@ class ProjectConfig:
     use_batch_norm: bool = True
     learning_rate: float = 1e-3
     weight_decay: float = 1e-4
+    num_epochs_demo: int = 3
 
     artifacts_dir: str = "artifacts"
     checkpoints_dir: str = "artifacts/checkpoints"

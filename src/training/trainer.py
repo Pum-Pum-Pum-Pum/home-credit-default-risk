@@ -25,6 +25,14 @@ class ValidationOutput:
     targets: np.ndarray
 
 
+@dataclass
+class EpochHistoryEntry:
+    epoch: int
+    train_loss: float
+    train_mean_pred_prob: float
+    valid_loss: float
+
+
 def get_device() -> torch.device:
     """Return CUDA device if available, otherwise CPU."""
     return torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -186,6 +194,71 @@ def run_train_epoch_preview(
         "train_mean_pred_prob": float(np.mean(probs)),
         "num_train_batches_used": float(len(losses)),
     }
+
+
+def run_train_epoch(
+    model: nn.Module,
+    train_loader,
+    optimizer: Optimizer,
+    loss_fn: nn.Module,
+    device: torch.device,
+) -> dict[str, float]:
+    """Run one full training epoch."""
+    losses: list[float] = []
+    probs: list[float] = []
+
+    for batch in train_loader:
+        step_metrics = train_step(
+            model=model,
+            batch=batch,
+            optimizer=optimizer,
+            loss_fn=loss_fn,
+            device=device,
+        )
+        losses.append(step_metrics["loss"])
+        probs.append(step_metrics["mean_pred_prob"])
+
+    return {
+        "train_loss_mean": float(np.mean(losses)),
+        "train_mean_pred_prob": float(np.mean(probs)),
+    }
+
+
+def run_training_loop(
+    model: nn.Module,
+    train_loader,
+    valid_loader,
+    optimizer: Optimizer,
+    loss_fn: nn.Module,
+    device: torch.device,
+    num_epochs: int,
+) -> list[EpochHistoryEntry]:
+    """Run a simple multi-epoch training loop with validation tracking."""
+    history: list[EpochHistoryEntry] = []
+
+    for epoch in range(1, num_epochs + 1):
+        train_metrics = run_train_epoch(
+            model=model,
+            train_loader=train_loader,
+            optimizer=optimizer,
+            loss_fn=loss_fn,
+            device=device,
+        )
+        valid_output = run_validation_epoch(
+            model=model,
+            valid_loader=valid_loader,
+            loss_fn=loss_fn,
+            device=device,
+        )
+
+        history.append(EpochHistoryEntry(
+            epoch=epoch,
+            train_loss=train_metrics["train_loss_mean"],
+            train_mean_pred_prob=train_metrics["train_mean_pred_prob"],
+            valid_loss=valid_output.loss,
+        ))
+
+    return history
 
 
 def inspect_training_step_devices(

@@ -15,6 +15,7 @@ from src.data.dataset import HomeCreditDataset, inspect_dataset_sample
 from src.data.eda import run_step1_eda
 from src.data.preprocessing import build_tabular_metadata, summarize_tabular_metadata
 from src.data.splits import make_train_valid_split
+from src.inference.pipeline import load_inference_artifacts, score_dataframe
 from src.models.tabular_mlp import TabularMLP, TabularMLPConfig, inspect_model_forward_pass
 from src.training.metrics import (
     compute_binary_classification_metrics,
@@ -22,6 +23,7 @@ from src.training.metrics import (
     threshold_sweep,
 )
 from src.training.trainer import (
+    EpochHistoryEntry,
     TrainingConfig,
     build_weighted_loss_fn,
     build_loss_fn,
@@ -29,6 +31,7 @@ from src.training.trainer import (
     compute_pos_weight,
     get_device,
     inspect_training_step_devices,
+    run_training_loop,
     run_train_epoch_preview,
     run_validation_epoch,
     train_step,
@@ -227,6 +230,47 @@ def main() -> None:
         "metadata_path": metadata_path,
         "inference_config_path": inference_config_path,
     })
+
+    fresh_model = TabularMLP(
+        cat_cardinalities=cat_cardinalities,
+        num_numeric_features=len(metadata.numerical_cols),
+        config=model_config,
+    ).to(device)
+    fresh_optimizer = build_optimizer(fresh_model, training_config)
+    history = run_training_loop(
+        model=fresh_model,
+        train_loader=train_loader,
+        valid_loader=valid_loader,
+        optimizer=fresh_optimizer,
+        loss_fn=weighted_loss_fn,
+        device=device,
+        num_epochs=config.num_epochs_demo,
+    )
+
+    print("\nStep 12 preview - multi-epoch history:")
+    for entry in history:
+        print({
+            "epoch": entry.epoch,
+            "train_loss": entry.train_loss,
+            "train_mean_pred_prob": entry.train_mean_pred_prob,
+            "valid_loss": entry.valid_loss,
+        })
+
+    inference_artifacts = load_inference_artifacts(
+        checkpoint_path=checkpoint_path,
+        metadata_path=metadata_path,
+        inference_config_path=inference_config_path,
+        model_config=model_config,
+        device=device,
+    )
+    inference_input = split_data.valid_df.head(5).drop(columns=[config.target_col]).copy()
+    inference_output = score_dataframe(
+        df=inference_input,
+        artifacts=inference_artifacts,
+    )
+
+    print("\nStep 13 preview - inference output sample:")
+    print(inference_output.to_dict(orient="records"))
 
     print("\nTorch device summary:")
     print(get_torch_device_summary())
