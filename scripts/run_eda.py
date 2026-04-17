@@ -23,6 +23,7 @@ from src.training.metrics import (
     threshold_sweep,
 )
 from src.training.trainer import (
+    EarlyStoppingConfig,
     EpochHistoryEntry,
     TrainingConfig,
     build_weighted_loss_fn,
@@ -32,6 +33,7 @@ from src.training.trainer import (
     get_device,
     inspect_training_step_devices,
     run_training_loop,
+    run_training_loop_with_early_stopping,
     run_train_epoch_preview,
     run_validation_epoch,
     train_step,
@@ -249,6 +251,43 @@ def main() -> None:
 
     print("\nStep 12 preview - multi-epoch history:")
     for entry in history:
+        print({
+            "epoch": entry.epoch,
+            "train_loss": entry.train_loss,
+            "train_mean_pred_prob": entry.train_mean_pred_prob,
+            "valid_loss": entry.valid_loss,
+        })
+
+    early_stopping_config = EarlyStoppingConfig(
+        patience=config.early_stopping_patience,
+        min_delta=config.early_stopping_min_delta,
+        checkpoint_path="artifacts/checkpoints/best_model_step14.pt",
+    )
+    best_model = TabularMLP(
+        cat_cardinalities=cat_cardinalities,
+        num_numeric_features=len(metadata.numerical_cols),
+        config=model_config,
+    ).to(device)
+    best_optimizer = build_optimizer(best_model, training_config)
+    early_stopping_result = run_training_loop_with_early_stopping(
+        model=best_model,
+        train_loader=train_loader,
+        valid_loader=valid_loader,
+        optimizer=best_optimizer,
+        loss_fn=weighted_loss_fn,
+        device=device,
+        num_epochs=config.num_epochs_demo,
+        early_stopping=early_stopping_config,
+    )
+
+    print("\nStep 14 preview - early stopping summary:")
+    print({
+        "best_valid_loss": early_stopping_result.best_valid_loss,
+        "best_epoch": early_stopping_result.best_epoch,
+        "stopped_early": early_stopping_result.stopped_early,
+        "best_checkpoint_path": early_stopping_result.checkpoint_path,
+    })
+    for entry in early_stopping_result.history:
         print({
             "epoch": entry.epoch,
             "train_loss": entry.train_loss,

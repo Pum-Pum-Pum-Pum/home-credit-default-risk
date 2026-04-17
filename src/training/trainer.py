@@ -3,11 +3,14 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from pathlib import Path
 
 import numpy as np
 import torch
 from torch import nn
 from torch.optim import AdamW, Optimizer
+
+from src.utils.checkpointing import save_model_checkpoint
 
 
 @dataclass
@@ -31,6 +34,22 @@ class EpochHistoryEntry:
     train_loss: float
     train_mean_pred_prob: float
     valid_loss: float
+
+
+@dataclass
+class EarlyStoppingConfig:
+    patience: int = 2
+    min_delta: float = 0.0
+    checkpoint_path: str = "artifacts/checkpoints/best_model_step14.pt"
+
+
+@dataclass
+class TrainingLoopResult:
+    history: list[EpochHistoryEntry]
+    best_valid_loss: float
+    best_epoch: int
+    stopped_early: bool
+    checkpoint_path: str
 
 
 def get_device() -> torch.device:
@@ -259,6 +278,68 @@ def run_training_loop(
         ))
 
     return history
+
+
+def run_training_loop_with_early_stopping(
+    model: nn.Module,
+    train_loader,
+    valid_loader,
+    optimizer: Optimizer,
+    loss_fn: nn.Module,
+    device: torch.device,
+    num_epochs: int,
+    early_stopping: EarlyStoppingConfig,
+) -> TrainingLoopResult:
+    """Run multi-epoch training with best-checkpoint tracking and early stopping."""
+    history: list[EpochHistoryEntry] = []
+    best_valid_loss = float("inf")
+    best_epoch = 0
+    epochs_without_improvement = 0
+    stopped_early = False
+
+    for epoch in range(1, num_epochs + 1):
+        train_metrics = run_train_epoch(
+            model=model,
+            train_loader=train_loader,
+            optimizer=optimizer,
+            loss_fn=loss_fn,
+            device=device,
+        )
+        valid_output = run_validation_epoch(
+            model=model,
+            valid_loader=valid_loader,
+            loss_fn=loss_fn,
+            device=device,
+        )
+
+        entry = EpochHistoryEntry(
+            epoch=epoch,
+            train_loss=train_metrics["train_loss_mean"],
+            train_mean_pred_prob=train_metrics["train_mean_pred_prob"],
+            valid_loss=valid_output.loss,
+        )
+        history.append(entry)
+
+        improved = valid_output.loss < (best_valid_loss - early_stopping.min_delta)
+        if improved:
+            best_valid_loss = valid_output.loss
+            best_epoch = epoch
+            epochs_without_improvement = 0
+            save_model_checkpoint(model, early_stopping.checkpoint_path)
+        else:
+            epochs_without_improvement += 1
+
+        if epochs_without_improvement >= early_stopping.patience:
+            stopped_early = True
+            break
+
+    return TrainingLoopResult(
+        history=history,
+        best_valid_loss=best_valid_loss,
+        best_epoch=best_epoch,
+        stopped_early=stopped_early,
+        checkpoint_path=early_stopping.checkpoint_path,
+    )
 
 
 def inspect_training_step_devices(
