@@ -1,6 +1,7 @@
 # Core tabular data handling
 pandas>=3.0,<3.1
 scikit-learn>=1.8,<1.9
+xgboost>=2.1,<2.2
 
 # PyTorch stack
 # Note: CUDA-enabled torch should be installed using the command documented in prerequisites.md

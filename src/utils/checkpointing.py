@@ -41,3 +41,11 @@ def save_json_artifact(obj: Any, path: str | Path) -> str:
     with open(path, "w", encoding="utf-8") as f:
         json.dump(_to_jsonable(obj), f, indent=2)
     return str(path)
+
+
+def save_text_artifact(text: str, path: str | Path) -> str:
+    """Save plain-text artifact such as experiment notes or summaries."""
+    path = ensure_parent_dir(path)
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(text)
+    return str(path)

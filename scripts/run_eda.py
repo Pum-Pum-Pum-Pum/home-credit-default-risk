@@ -17,6 +17,7 @@ from src.data.preprocessing import build_tabular_metadata, summarize_tabular_met
 from src.data.splits import make_train_valid_split
 from src.inference.pipeline import load_inference_artifacts, score_dataframe
 from src.models.tabular_mlp import TabularMLP, TabularMLPConfig, inspect_model_forward_pass
+from src.training.baselines import run_xgb_baseline
 from src.training.metrics import (
     compute_binary_classification_metrics,
     summarize_metrics,
@@ -38,7 +39,7 @@ from src.training.trainer import (
     run_validation_epoch,
     train_step,
 )
-from src.utils.checkpointing import save_json_artifact, save_model_checkpoint
+from src.utils.checkpointing import save_json_artifact, save_model_checkpoint, save_text_artifact
 from src.utils.device import get_torch_device_summary
 
 
@@ -294,6 +295,64 @@ def main() -> None:
             "train_mean_pred_prob": entry.train_mean_pred_prob,
             "valid_loss": entry.valid_loss,
         })
+
+    history_payload = [
+        {
+            "epoch": entry.epoch,
+            "train_loss": entry.train_loss,
+            "train_mean_pred_prob": entry.train_mean_pred_prob,
+            "valid_loss": entry.valid_loss,
+        }
+        for entry in early_stopping_result.history
+    ]
+    history_path = save_json_artifact(
+        obj=history_payload,
+        path="artifacts/metrics/training_history_step15.json",
+    )
+    summary_text = (
+        f"Best epoch: {early_stopping_result.best_epoch}\n"
+        f"Best valid loss: {early_stopping_result.best_valid_loss:.6f}\n"
+        f"Stopped early: {early_stopping_result.stopped_early}\n"
+        f"Best checkpoint: {early_stopping_result.checkpoint_path}\n"
+        f"Note: Tree-based baselines should still be compared for this tabular credit-risk task.\n"
+    )
+    summary_path = save_text_artifact(
+        text=summary_text,
+        path="artifacts/logs/experiment_summary_step15.txt",
+    )
+
+    print("\nStep 15 preview - saved experiment artifacts:")
+    print({
+        "history_path": history_path,
+        "summary_path": summary_path,
+        "baseline_note": "Compare PyTorch metrics later against LightGBM/XGBoost baseline before any production claim.",
+    })
+
+    baseline_result = run_xgb_baseline(
+        train_df=split_data.train_df,
+        valid_df=split_data.valid_df,
+        target_col=config.target_col,
+        categorical_cols=metadata.categorical_cols,
+        numerical_cols=metadata.numerical_cols,
+        random_state=config.random_state,
+    )
+
+    print("\nStep 16 preview - XGBoost baseline summary:")
+    baseline_summary = {
+        "xgb_roc_auc": baseline_result.roc_auc,
+        "xgb_pr_auc": baseline_result.pr_auc,
+        "xgb_positive_rate_pred": baseline_result.positive_rate_pred,
+        "pytorch_roc_auc_reference": metrics.roc_auc,
+        "pytorch_pr_auc_reference": metrics.pr_auc,
+    }
+    print(baseline_summary)
+
+    baseline_artifact_path = save_json_artifact(
+        obj=baseline_summary,
+        path="artifacts/metrics/baseline_comparison_step16.json",
+    )
+    print("\nStep 16 preview - baseline artifact path:")
+    print({"baseline_artifact_path": baseline_artifact_path})
 
     inference_artifacts = load_inference_artifacts(
         checkpoint_path=checkpoint_path,
