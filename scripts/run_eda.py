@@ -1,4 +1,10 @@
-"""Command-line entry point for Step 1 EDA."""
+"""Large exploratory script retained for learning history and step-by-step previews.
+
+For cleaner production-style execution prefer:
+- scripts/train_pytorch.py
+- scripts/train_xgb_baseline.py
+- scripts/run_inference_demo.py
+"""
 
 from __future__ import annotations
 
