@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
+from time import perf_counter
 
 import numpy as np
 import torch
@@ -11,6 +12,7 @@ from torch import nn
 from torch.optim import AdamW, Optimizer
 
 from src.utils.checkpointing import save_model_checkpoint
+from src.training.metrics import compute_binary_classification_metrics
 
 
 @dataclass
@@ -34,6 +36,9 @@ class EpochHistoryEntry:
     train_loss: float
     train_mean_pred_prob: float
     valid_loss: float
+    valid_roc_auc: float | None = None
+    valid_pr_auc: float | None = None
+    epoch_seconds: float | None = None
 
 
 @dataclass
@@ -41,15 +46,19 @@ class EarlyStoppingConfig:
     patience: int = 2
     min_delta: float = 0.0
     checkpoint_path: str = "artifacts/checkpoints/best_model_step14.pt"
+    monitor: str = "valid_loss"
 
 
 @dataclass
 class TrainingLoopResult:
     history: list[EpochHistoryEntry]
-    best_valid_loss: float
+    best_metric_value: float
     best_epoch: int
     stopped_early: bool
     checkpoint_path: str
+    monitor: str
+    total_training_seconds: float
+    average_epoch_seconds: float
 
 
 def get_device() -> torch.device:
@@ -256,6 +265,7 @@ def run_training_loop(
     history: list[EpochHistoryEntry] = []
 
     for epoch in range(1, num_epochs + 1):
+        epoch_start = perf_counter()
         train_metrics = run_train_epoch(
             model=model,
             train_loader=train_loader,
@@ -292,12 +302,21 @@ def run_training_loop_with_early_stopping(
 ) -> TrainingLoopResult:
     """Run multi-epoch training with best-checkpoint tracking and early stopping."""
     history: list[EpochHistoryEntry] = []
-    best_valid_loss = float("inf")
+    if early_stopping.monitor == "valid_loss":
+        best_metric_value = float("inf")
+        lower_is_better = True
+    elif early_stopping.monitor in {"valid_roc_auc", "valid_pr_auc"}:
+        best_metric_value = float("-inf")
+        lower_is_better = False
+    else:
+        raise ValueError(f"Unsupported monitor: {early_stopping.monitor}")
+
     best_epoch = 0
     epochs_without_improvement = 0
     stopped_early = False
 
     for epoch in range(1, num_epochs + 1):
+        epoch_start = perf_counter()
         train_metrics = run_train_epoch(
             model=model,
             train_loader=train_loader,
@@ -312,17 +331,34 @@ def run_training_loop_with_early_stopping(
             device=device,
         )
 
+        valid_metrics = compute_binary_classification_metrics(
+            targets=valid_output.targets,
+            probs=valid_output.probs,
+            threshold=0.4,
+        )
+
         entry = EpochHistoryEntry(
             epoch=epoch,
             train_loss=train_metrics["train_loss_mean"],
             train_mean_pred_prob=train_metrics["train_mean_pred_prob"],
             valid_loss=valid_output.loss,
+            valid_roc_auc=valid_metrics.roc_auc,
+            valid_pr_auc=valid_metrics.pr_auc,
+            epoch_seconds=perf_counter() - epoch_start,
         )
         history.append(entry)
 
-        improved = valid_output.loss < (best_valid_loss - early_stopping.min_delta)
+        current_metric = getattr(entry, early_stopping.monitor)
+        if current_metric is None:
+            raise ValueError(f"Monitored metric {early_stopping.monitor} is None")
+
+        if lower_is_better:
+            improved = current_metric < (best_metric_value - early_stopping.min_delta)
+        else:
+            improved = current_metric > (best_metric_value + early_stopping.min_delta)
+
         if improved:
-            best_valid_loss = valid_output.loss
+            best_metric_value = float(current_metric)
             best_epoch = epoch
             epochs_without_improvement = 0
             save_model_checkpoint(model, early_stopping.checkpoint_path)
@@ -333,12 +369,16 @@ def run_training_loop_with_early_stopping(
             stopped_early = True
             break
 
+    epoch_times = [entry.epoch_seconds for entry in history if entry.epoch_seconds is not None]
     return TrainingLoopResult(
         history=history,
-        best_valid_loss=best_valid_loss,
+        best_metric_value=best_metric_value,
         best_epoch=best_epoch,
         stopped_early=stopped_early,
         checkpoint_path=early_stopping.checkpoint_path,
+        monitor=early_stopping.monitor,
+        total_training_seconds=float(sum(epoch_times)),
+        average_epoch_seconds=float(np.mean(epoch_times)) if epoch_times else 0.0,
     )
 
 

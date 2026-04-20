@@ -87,6 +87,7 @@ def main() -> None:
         patience=config.early_stopping_patience,
         min_delta=config.early_stopping_min_delta,
         checkpoint_path="artifacts/checkpoints/train_pytorch_best.pt",
+        monitor="valid_pr_auc",
     )
     result = run_training_loop_with_early_stopping(
         model=model,
@@ -117,6 +118,9 @@ def main() -> None:
             "train_loss": entry.train_loss,
             "train_mean_pred_prob": entry.train_mean_pred_prob,
             "valid_loss": entry.valid_loss,
+            "valid_roc_auc": entry.valid_roc_auc,
+            "valid_pr_auc": entry.valid_pr_auc,
+            "epoch_seconds": entry.epoch_seconds,
         }
         for entry in result.history
     ]
@@ -125,20 +129,26 @@ def main() -> None:
     summary_path = save_text_artifact(
         (
             f"Best epoch: {result.best_epoch}\n"
-            f"Best valid loss: {result.best_valid_loss:.6f}\n"
+            f"Monitor: {result.monitor}\n"
+            f"Best metric value: {result.best_metric_value:.6f}\n"
             f"Checkpoint: {result.checkpoint_path}\n"
             f"Device: {device}\n"
+            f"Total training seconds: {result.total_training_seconds:.4f}\n"
+            f"Average epoch seconds: {result.average_epoch_seconds:.4f}\n"
         ),
         "artifacts/logs/train_pytorch_summary.txt",
     )
 
     print({
         "best_epoch": result.best_epoch,
-        "best_valid_loss": result.best_valid_loss,
+        "best_metric_value": result.best_metric_value,
+        "monitor": result.monitor,
         "history_path": history_path,
         "metrics_path": metrics_path,
         "summary_path": summary_path,
         "checkpoint_path": result.checkpoint_path,
+        "total_training_seconds": result.total_training_seconds,
+        "average_epoch_seconds": result.average_epoch_seconds,
     })
 
 
