@@ -19,6 +19,8 @@ class BaselineResult:
     roc_auc: float
     pr_auc: float
     positive_rate_pred: float
+    valid_probs: np.ndarray | None = None
+    valid_targets: np.ndarray | None = None
 
 
 def build_xgb_baseline(
@@ -88,4 +90,6 @@ def run_xgb_baseline(
         roc_auc=float(roc_auc_score(y_valid, valid_probs)),
         pr_auc=float(average_precision_score(y_valid, valid_probs)),
         positive_rate_pred=float(valid_preds.mean()),
+        valid_probs=valid_probs,
+        valid_targets=y_valid.to_numpy(),
     )

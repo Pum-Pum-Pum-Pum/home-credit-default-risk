@@ -15,13 +15,13 @@ class ProjectConfig:
     batch_size: int = 512
     num_workers: int = 0
     pin_memory: bool = True
-    embedding_dropout: float = 0.1
+    embedding_dropout: float = 0.15
     mlp_hidden_dims: tuple[int, ...] = (256, 128)
-    mlp_dropout: float = 0.2
+    mlp_dropout: float = 0.3
     use_batch_norm: bool = True
-    learning_rate: float = 1e-3
+    learning_rate: float = 5e-4
     weight_decay: float = 1e-4
-    num_epochs_demo: int = 20
+    num_epochs_demo: int = 30
     early_stopping_patience: int = 4
     early_stopping_min_delta: float = 0.0
 
